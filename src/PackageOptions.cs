@@ -61,7 +61,8 @@ namespace NugetUtility
         [Option('j', "json", Default = false, HelpText = "Saves licenses list in a json file (licenses.json)")]
         public bool JsonOutput { get; set; }
 
-        [Option('e', "export-license-texts", Default = false, HelpText = "Exports the raw license texts")]
+        [Option('e', "export-license-texts", Default = true,
+            HelpText = "Exports the raw license texts")]
         public bool ExportLicenseTexts { get; set; }
 
         [Option('t', "include-transitive", Default = false, HelpText = "Include distinct transitive package licenses per project file.")]

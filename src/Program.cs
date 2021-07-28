@@ -42,7 +42,7 @@ namespace NugetUtility
 
                 if (options.ExportLicenseTexts)
                 {
-                    await methods.ExportLicenseTexts(mappedLibraryInfo);
+                    await methods.GetLicenseTexts(mappedLibraryInfo);
                 }
 
                 mappedLibraryInfo = methods.HandleDeprecateMSFTLicense(mappedLibraryInfo);
@@ -60,7 +60,7 @@ namespace NugetUtility
                 }
                 else
                 {
-                    methods.SaveAsTextFile(mappedLibraryInfo);
+                   methods.SaveAsTextFile(mappedLibraryInfo);
                 }
 
                 return 0;

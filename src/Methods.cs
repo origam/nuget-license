@@ -8,11 +8,14 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using System.Xml.XPath;
 using Newtonsoft.Json;
+using Octokit;
 using static NugetUtility.Utilties;
+using FileMode = System.IO.FileMode;
 
 namespace NugetUtility
 {
@@ -21,6 +24,9 @@ namespace NugetUtility
         private const string fallbackPackageUrl = "https://www.nuget.org/api/v2/package/{0}/{1}";
         private const string nugetUrl = "https://api.nuget.org/v3-flatcontainer/";
         private const string deprecateNugetLicense = "https://aka.ms/deprecateLicenseUrl";
+
+        private static readonly string licenseDownloadDir = "./LicenseFiles/DirectDownloads";
+        private static readonly string licenseOverrideDir = "./LicenseFiles/ManualOverrides";
         private static readonly Dictionary<Tuple<string, string>, Package> _requestCache = new Dictionary<Tuple<string, string>, Package>();
         private static readonly Dictionary<Tuple<string, string>, string> _licenseFileCache = new Dictionary<Tuple<string, string>, string>();
         /// <summary>
@@ -29,7 +35,7 @@ namespace NugetUtility
         private static HttpClient _httpClient;
 
         private const int maxRedirects = 5; // HTTP client max number of redirects allowed
-        private const int timeout = 10; // HTTP client timeout in seconds
+        private const int timeout = 100; // HTTP client timeout in seconds
         private readonly IReadOnlyDictionary<string, string> _licenseMappings;
         private readonly PackageOptions _packageOptions;
         private readonly XmlSerializer _serializer;
@@ -392,7 +398,9 @@ namespace NugetUtility
                     item.Metadata.Description ?? string.Empty,
                 LicenseType = manual?.LicenseType ?? licenseType ?? string.Empty,
                 LicenseUrl = manual?.LicenseUrl ?? licenseUrl ?? string.Empty,
-                Projects = _packageOptions.IncludeProjectFile ? projectFile : null
+                Projects = _packageOptions.IncludeProjectFile ? projectFile : null,
+                Repository = item.Metadata.Repository,
+                Source =  JsonConvert.SerializeObject(item.Metadata, Formatting.Indented)
             };
         }
 
@@ -740,9 +748,8 @@ namespace NugetUtility
         /// <param name="licenseFile"></param>
         /// <param name="version"></param>
         /// <returns></returns>
-        public async Task<bool> GetLicenceFromNpkgFile(string package, string licenseFile, string version)
+        public async Task<string> GetLicenceFromNpkgFile(string package, string licenseFile, string version)
         {
-            bool result = false;
             var nupkgEndpoint = new Uri(string.Format(fallbackPackageUrl, package, version));
             WriteOutput(() => $"Attempting to download: {nupkgEndpoint}", logLevel: LogLevel.Verbose);
             using var packageRequest = new HttpRequestMessage(HttpMethod.Get, nupkgEndpoint);
@@ -750,23 +757,14 @@ namespace NugetUtility
 
             if (!packageResponse.IsSuccessStatusCode)
             {
-                WriteOutput($"{packageRequest.RequestUri} failed due to {packageResponse.StatusCode}!", logLevel: LogLevel.Warning);
-                return false;
+                throw new Exception(packageResponse.ReasonPhrase);
             }
 
-            var directory = GetExportDirectory();
-            var outpath = Path.Combine(directory, $"{package}_{version}.nupkg.zip");
+            var outpath =  $"{package}_{version}.nupkg.zip";
 
             using (var fileStream = File.OpenWrite(outpath))
             {
-                try
-                {
-                    await packageResponse.Content.CopyToAsync(fileStream);
-                }
-                catch (Exception)
-                {
-                    return false;
-                }
+                await packageResponse.Content.CopyToAsync(fileStream);
             }
 
             using (ZipArchive archive = ZipFile.OpenRead(outpath))
@@ -774,26 +772,15 @@ namespace NugetUtility
                 var sample = archive.GetEntry(licenseFile);
                 if (sample != null)
                 {
-                    var t = sample.Open();
-                    if (t != null && t.CanRead)
-                    {
-                        var libTxt = outpath.Replace(".nupkg.zip", ".txt");
-                        using var fileStream = File.OpenWrite(libTxt);
-                        try
-                        {
-                            await t.CopyToAsync(fileStream);
-                            result = true;
-                        }
-                        catch (Exception)
-                        {
-                            return false;
-                        }
-                    }
+                    var stream = sample.Open();
+                    StreamReader reader = new StreamReader(stream);
+                    return reader.ReadToEnd();
+                    
                 }
             }
 
             File.Delete(outpath);
-            return result;
+            return null;
         }
 
         /// <summary>
@@ -815,65 +802,160 @@ namespace NugetUtility
             return result;
         }
 
-        public async Task ExportLicenseTexts (List<LibraryInfo> infos) {
-            var directory = GetExportDirectory ();
-            foreach (var info in infos.Where (i => !string.IsNullOrEmpty (i.LicenseUrl))) {
-                var source = info.LicenseUrl;
-                var outpath = Path.Combine(directory, $"{info.PackageName}_{info.PackageVersion}.txt");
-                if (File.Exists(outpath))
+        public async Task GetLicenseTexts (List<LibraryInfo> infos) {
+            foreach (var info in infos)
+            {
+                info.LicenseText = GetLicenseTextFromGitHub(info);
+                if (!string.IsNullOrEmpty(info.LicenseText))
                 {
                     continue;
                 }
-                if (source == deprecateNugetLicense)
+
+                await GetLicenseTextFormLicenseUrl(info);
+                if (!string.IsNullOrEmpty(info.LicenseText))
                 {
-                    if (await GetLicenceFromNpkgFile(info.PackageName, info.LicenseType, info.PackageVersion))
-                        continue;
+                    continue;
                 }
 
-                if (source == "http://go.microsoft.com/fwlink/?LinkId=329770" || source == "https://dotnet.microsoft.com/en/dotnet_library_license.htm")
-                {
-                    if (await GetLicenceFromNpkgFile(info.PackageName, "dotnet_library_license.txt", info.PackageVersion))
-                        continue;
-                }
-
-                if (source.StartsWith("https://licenses.nuget.org"))
-                {
-                    if (await GetLicenceFromNpkgFile(info.PackageName, "License.txt", info.PackageVersion))
-                        continue;
-                }
-
-                do
-                {
-                    WriteOutput(() => $"Attempting to download {source} to {outpath}", logLevel: LogLevel.Verbose);
-                    using var request = new HttpRequestMessage(HttpMethod.Get, source);
-                    using var response = await _httpClient.SendAsync(request);
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        WriteOutput($"{request.RequestUri} failed due to {response.StatusCode}!", logLevel: LogLevel.Error);
-                        break;
-                    }
-
-                    // Detect a redirect 302
-                    if (response.RequestMessage.RequestUri.AbsoluteUri != source)
-                    {
-                        WriteOutput(() => " Redirect detected", logLevel: LogLevel.Verbose);
-                        source = response.RequestMessage.RequestUri.AbsoluteUri;
-                        continue;
-                    }
-
-                    // Modify the URL if required
-                    if (CorrectUri(source) != source)
-                    {
-                        WriteOutput(() => " Fixing URL", logLevel: LogLevel.Verbose);
-                        source = CorrectUri(source);
-                        continue;
-                    }
-
-                    using var fileStream = File.OpenWrite(outpath);
-                    await response.Content.CopyToAsync(fileStream);
-                    break;
-                } while (true);
+                info.LicenseText = GetLicenseTextFromLocalFile(info);
             }
+        }
+
+        private string GetLicenseTextFromLocalFile(LibraryInfo info)
+        {
+            string fileInOverridesDir = Path.Combine(licenseOverrideDir,
+                GetLicenseFileName(info));
+            if (!File.Exists(fileInOverridesDir))
+            {
+                throw new Exception(
+                    $"Since all other ways of getting the license text have failed we were trying to get the license text from a local file but the file was not found. Please find the license text and save it into {fileInOverridesDir}\nPackage info:\n{info.Source}");
+            }
+
+            return File.ReadAllText(fileInOverridesDir);
+        }
+
+        private string GetLicenseTextFromGitHub(LibraryInfo info)
+        {
+            if (info.Repository?.Type?.ToLower() != "git" || string.IsNullOrEmpty(info.Repository.Url))
+            {
+                return null;
+            }
+            var gitHubUrlParser = new GitHubUrlParser(info.Repository.Url);
+            var github = new GitHubClient(new ProductHeaderValue("LicenseGetter"));
+            
+            var licenseFilePath = github
+                .Repository
+                .Content
+                .GetAllContents(gitHubUrlParser.User, gitHubUrlParser.RepositoryName).Result
+                .FirstOrDefault(item => item.Name.ToLower().Contains("license"))
+                ?.Path;
+            if (licenseFilePath == null)
+            {
+                return null;
+            }
+
+            var licenseText = github
+                .Repository
+                .Content.GetAllContents(gitHubUrlParser.User, gitHubUrlParser.RepositoryName, licenseFilePath)
+                .Result
+                .FirstOrDefault()
+                ?.Content;
+            return licenseText;
+        }
+
+        private async Task GetLicenseTextFormLicenseUrl(LibraryInfo info)
+        {
+            if (string.IsNullOrEmpty(info.LicenseUrl))
+            {
+                return;
+            }
+
+            var source = info.LicenseUrl;
+            if (source == deprecateNugetLicense)
+            {
+                info.LicenseText = await GetLicenceFromNpkgFile(info.PackageName,
+                    info.LicenseType, info.PackageVersion);
+                if (!string.IsNullOrEmpty(info.LicenseText))
+                {
+                    return;
+                }
+            }
+
+            if (source == "http://go.microsoft.com/fwlink/?LinkId=329770" || source ==
+                "https://dotnet.microsoft.com/en/dotnet_library_license.htm")
+            {
+                info.LicenseText = await GetLicenceFromNpkgFile(info.PackageName,
+                    "dotnet_library_license.txt", info.PackageVersion);
+                if (!string.IsNullOrEmpty(info.LicenseText))
+                {
+                    return;
+                }
+            }
+
+            if (source.StartsWith("https://licenses.nuget.org"))
+            {
+                info.LicenseText = await GetLicenceFromNpkgFile(info.PackageName,
+                    "License.txt", info.PackageVersion);
+                if (!string.IsNullOrEmpty(info.LicenseText))
+                {
+                    return;
+                }
+            }
+
+            string license = await DownloadFile(source);
+            if (!IsHtml(license))
+            {
+                info.LicenseText = license;
+            }
+        }
+        
+        private bool IsHtml(string maybeHtml)
+        {
+            var tagRegex = new System.Text.RegularExpressions.Regex(@"<\s*([^ >]+)[^>]*>.*?<\s*/\s*\1\s*>");
+            return tagRegex.IsMatch(maybeHtml);
+        }
+        
+        private async Task<string> DownloadFile(string source)
+        {
+            do
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, source);
+                using var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    WriteOutput(
+                        $"{request.RequestUri} failed due to {response.StatusCode}!",
+                        logLevel: LogLevel.Error);
+                    break;
+                }
+
+                // Detect a redirect 302
+                if (response.RequestMessage.RequestUri.AbsoluteUri != source)
+                {
+                    WriteOutput(() => " Redirect detected", logLevel: LogLevel.Verbose);
+                    source = response.RequestMessage.RequestUri.AbsoluteUri;
+                    continue;
+                }
+
+                // Modify the URL if required
+                if (CorrectUri(source) != source)
+                {
+                    WriteOutput(() => " Fixing URL", logLevel: LogLevel.Verbose);
+                    source = CorrectUri(source);
+                    continue;
+                }
+
+                Stream stream = await response.Content.ReadAsStreamAsync();
+                StreamReader reader = new StreamReader(stream);
+                return await reader.ReadToEndAsync();
+            } while (true);
+
+            return null;
+        }
+
+        private static string GetLicenseFileName(LibraryInfo info)
+        {
+            return $"{info.PackageName}_{info.PackageVersion}.txt";
         }
 
         private bool IsGithub(string uri)
@@ -936,39 +1018,36 @@ namespace NugetUtility
         public void SaveAsTextFile(List<LibraryInfo> libraries)
         {
             if (!libraries.Any() || !_packageOptions.TextOutput) { return; }
-            StringBuilder sb = new StringBuilder(256);
+            StringBuilder builder = new StringBuilder(256);
             foreach (var lib in libraries)
             {
-                sb.Append(new string('#', 100));
-                sb.AppendLine();
-                sb.Append("Package:");
-                sb.Append(lib.PackageName);
-                sb.AppendLine();
-                sb.Append("Version:");
-                sb.Append(lib.PackageVersion);
-                sb.AppendLine();
-                sb.Append("project URL:");
-                sb.Append(lib.PackageUrl);
-                sb.AppendLine();
-                sb.Append("Description:");
-                sb.Append(lib.Description);
-                sb.AppendLine();
-                sb.Append("licenseUrl:");
-                sb.Append(lib.LicenseUrl);
-                sb.AppendLine();
-                sb.Append("license Type:");
-                sb.Append(lib.LicenseType);
-                sb.AppendLine();
-                if (_packageOptions.IncludeProjectFile)
+                builder.Append($"The following software may be included in this product: {lib.PackageName}. A copy of the source code may be downloaded from {lib.PackageUrl}. This software contains the following license and notice below:");
+                builder.AppendLine();
+                builder.AppendLine();
+                if (!string.IsNullOrWhiteSpace(lib.Copyright))
                 {
-                    sb.Append("Project:");
-                    sb.Append(lib.Projects);
-                    sb.AppendLine();
+                    builder.Append($"{lib.Copyright}");
                 }
-                sb.AppendLine();
+                else
+                {
+                    if (lib.Authors == null || lib.Authors.Length == 0)
+                    {
+                        throw new Exception($"Package {lib.PackageName} has not copyright and author.");
+                    }
+                    builder.Append($"Authors: {string.Join(", ",lib.Authors)}");
+                }
+                builder.AppendLine();
+                builder.AppendLine();
+                if (string.IsNullOrWhiteSpace(lib.LicenseText))
+                {
+                    throw new Exception($"License of the package {lib.PackageName} was not found.");
+                }
+                builder.Append($" {lib.LicenseText}");
+                builder.AppendLine();
+                builder.AppendLine();
             }
 
-            File.WriteAllText(GetOutputFilename("licenses.txt"), sb.ToString());
+            File.WriteAllText(GetOutputFilename("attributions.txt"), builder.ToString());
         }
 
         private void WriteOutput(Func<string> line, Exception exception = null, LogLevel logLevel = LogLevel.Information)

@@ -233,24 +233,24 @@ namespace NugetUtility.Tests {
                 LicenseUrl = licenseUrl,
                 LicenseType = licenseType,
             });
-            await methods.ExportLicenseTexts(infos);
+            await methods.GetLicenseTexts(infos);
             var directory = methods.GetExportDirectory();
             var outpath = Path.Combine(directory, packageName + "_" + packageVersion + ".txt");
             Assert.That(File.Exists(outpath));
         }
 
-        [TestCase("BenchmarkDotNet", "License.txt", "10.12.1")]
-        [Test]
-        public async Task GetLicenceFromNpkgFile_Should_Return_False(string packageName, string licenseFile, string packageVersion)
-        {
-            var methods = new Methods(new PackageOptions
-            {
-                ExportLicenseTexts = true,
-            });
-
-            var result = await methods.GetLicenceFromNpkgFile(packageName, licenseFile, packageVersion);
-            Assert.False(result);
-        }
+        // [TestCase("BenchmarkDotNet", "License.txt", "10.12.1")]
+        // [Test]
+        // public async Task GetLicenceFromNpkgFile_Should_Return_False(string packageName, string licenseFile, string packageVersion)
+        // {
+        //     var methods = new Methods(new PackageOptions
+        //     {
+        //         ExportLicenseTexts = true,
+        //     });
+        //
+        //     var result = await methods.GetLicenceFromNpkgFile(packageName, licenseFile, packageVersion);
+        //     Assert.False(result);
+        // }
 
         [Test]
         public void HttpClient_IgnoreSslError_CallbackTest()

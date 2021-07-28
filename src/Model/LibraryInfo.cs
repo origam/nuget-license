@@ -1,3 +1,5 @@
+using System;
+
 namespace NugetUtility
 {
     public class LibraryInfo
@@ -9,7 +11,15 @@ namespace NugetUtility
         public string [] Authors { get; set; }
         public string Description { get; set; }
         public string LicenseUrl { get; set; }
+        public string LicenseText { get; set; }
         public string LicenseType { get; set; }
         public string Projects { get; set; }
+        public Repository Repository { get; set; }
+        public string Source { get; set; }
+
+        public override string ToString()
+        {
+            return $"{PackageName} v{PackageVersion}";
+        }
     }
 }
