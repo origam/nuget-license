@@ -8,14 +8,12 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using System.Xml.XPath;
 using Newtonsoft.Json;
 using Octokit;
 using static NugetUtility.Utilties;
-using FileMode = System.IO.FileMode;
 
 namespace NugetUtility
 {
@@ -339,30 +337,7 @@ namespace NugetUtility
             {
                 libraryInfos.Add(missed);
             }
-
-            if (_packageOptions.UniqueOnly)
-            {
-                libraryInfos = libraryInfos
-                    .GroupBy(x => new { x.PackageName, x.PackageVersion })
-                    .Select(g =>
-                    {
-                        var first = g.First();
-                        return new LibraryInfo
-                        {
-                            PackageName = first.PackageName,
-                            PackageVersion = first.PackageVersion,
-                            PackageUrl = first.PackageUrl,
-                            Copyright = first.Copyright,
-                            Authors = first.Authors,
-                            Description = first.Description,
-                            LicenseType = first.LicenseType,
-                            LicenseUrl = first.LicenseUrl,
-                            Projects = _packageOptions.IncludeProjectFile ? string.Join(";", g.Select(p => p.Projects)) : null
-                        };
-                    })
-                    .ToList();
-            }
-
+            
             return libraryInfos
                 .OrderBy(p => p.PackageName)
                 .ToList();
@@ -1001,23 +976,9 @@ namespace NugetUtility
                                                             a => a.LicenseUrl ?? "---"), logLevel: LogLevel.Always);
         }
 
-        public void SaveAsJson(List<LibraryInfo> libraries)
-        {
-            if (!libraries.Any() || !_packageOptions.JsonOutput) { return; }
-            JsonSerializerSettings jsonSettings = new JsonSerializerSettings
-            {
-                NullValueHandling = _packageOptions.IncludeProjectFile ? NullValueHandling.Include : NullValueHandling.Ignore
-            };
-
-            using var fileStream = new FileStream(GetOutputFilename("licenses.json"), FileMode.Create);
-            using var streamWriter = new StreamWriter(fileStream);
-            streamWriter.Write(JsonConvert.SerializeObject(libraries, jsonSettings));
-            streamWriter.Flush();
-        }
-
         public void SaveAsTextFile(List<LibraryInfo> libraries)
         {
-            if (!libraries.Any() || !_packageOptions.TextOutput) { return; }
+            if (!libraries.Any()) { return; }
             StringBuilder builder = new StringBuilder(256);
             foreach (var lib in libraries)
             {

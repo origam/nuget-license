@@ -33,10 +33,7 @@ namespace NugetUtility
 
         [Option("licenseurl-to-license-mappings", Default = null, HelpText = "Simple json file of Dictinary<string,string> to override default mappings")]
         public string LicenseToUrlMappingsOption { get; set; }
-
-        [Option('o', "output", Default = false, HelpText = "Saves as text file (licenses.txt)")]
-        public bool TextOutput { get; set; }
-
+        
         [Option("outfile", Default = null, HelpText = "Output filename")]
         public string OutputFileName { get; set; }
 
@@ -52,19 +49,9 @@ namespace NugetUtility
         [Option("packages-filter", Default = null, HelpText = "Simple json file of a text array of packages to skip, or a regular expression defined between two forward slashes.")]
         public string PackagesFilterOption { get; set; }
 
-        [Option('u', "unique", Default = false, HelpText = "Unique licenses list by Id/Version")]
-        public bool UniqueOnly { get; set; }
-
         [Option('p', "print", Default = true, HelpText = "Print licenses.")]
         public bool? Print { get; set; }
-
-        [Option('j', "json", Default = false, HelpText = "Saves licenses list in a json file (licenses.json)")]
-        public bool JsonOutput { get; set; }
-
-        [Option('e', "export-license-texts", Default = true,
-            HelpText = "Exports the raw license texts")]
-        public bool ExportLicenseTexts { get; set; }
-
+        
         [Option('t', "include-transitive", Default = false, HelpText = "Include distinct transitive package licenses per project file.")]
         public bool IncludeTransitive { get; set; }
 
@@ -84,15 +71,12 @@ namespace NugetUtility
             new Example ("VS Solution", new PackageOptions { ProjectDirectory = "~/Projects/test-project/project.sln" }),
             new Example ("Unique VS Solution to Custom JSON File", new PackageOptions {
                         ProjectDirectory = "~/Projects/test-project/project.sln",
-                        UniqueOnly = true,
-                        JsonOutput = true,
                         OutputFileName = @"~/Projects/another-folder/licenses.json"
                         }),
             new Example("Export all license texts in a specific directory with verbose log", new PackageOptions
             {
                 LogLevelThreshold = LogLevel.Verbose,
                 OutputDirectory = "~/Projects/exports",
-                ExportLicenseTexts = true,
             }),
                 };
             }

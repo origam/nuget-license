@@ -21,10 +21,6 @@ namespace NugetUtility.Tests {
             _methods = new Methods (new PackageOptions { ProjectDirectory = _projectPath });
         }
 
-        private void AddUniquePackageOption () {
-            _methods = new Methods (new PackageOptions { UniqueOnly = true, ProjectDirectory = _projectPath });
-        }
-
         [Test]
         public void GetProjectExtension_Should_Be_CsprojOrFsProj () {
             _methods.GetProjectExtensions ().Should ().Contain (".csproj", ".fsproj");
@@ -82,38 +78,7 @@ namespace NugetUtility.Tests {
                 .BeEquivalentTo (information.Select (x => $"{x.Value.Metadata.Id},{x.Value.Metadata.Version}"));
         }
 
-        [Test]
-        public void MapPackagesToLibraryInfo_Unique_Should_Return_One_Result () {
-            AddUniquePackageOption ();
-            PackageList list = new PackageList ();
-            list.Add ("log4net", new Package {
-                Metadata = new Metadata {
-                    Id = "log4net",
-                        License = new License {
-                            Text = "MIT",
-                                Type = "Open"
-                        },
-                        Version = "2.0.8",
-                },
-            });
-
-            list.Add ("log4net2", new Package {
-                Metadata = new Metadata {
-                    Id = "log4net",
-                        License = new License {
-                            Text = "MIT",
-                                Type = "Open"
-                        },
-                        Version = "2.0.8",
-                }
-            });
-
-            var packages = new Dictionary<string, PackageList> ();
-            packages.Add ("packages", list);
-            var info = _methods.MapPackagesToLibraryInfo (packages);
-            info.Count.Should ().Equals (1);
-        }
-
+     
         [Test]
         public async Task GetPackages_ProjectsFilter_Should_Remove_Test_Projects () {
             var methods = new Methods (new PackageOptions {
@@ -213,32 +178,7 @@ namespace NugetUtility.Tests {
             // Some third-order refs:
             list.Should().ContainKey("System.Buffers,4.3.0");
         }
-
-        [TestCase("BenchmarkDotNet", "0.12.1", "https://licenses.nuget.org/MIT", "MIT")]
-        [TestCase("BCrypt.Net-Next", "2.1.3", "https://github.com/BcryptNet/bcrypt.net/blob/master/licence.txt", "")]
-        [TestCase("System.Memory", "4.5.4", "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT", "MIT")]
-        [TestCase("System.Text.RegularExpressions", "4.3.0", "http://go.microsoft.com/fwlink/?LinkId=329770", "MS-EULA")]
-        [Test]
-        public async Task ExportLicenseTexts_Should_Export_File(string packageName, string packageVersion, string licenseUrl, string licenseType)
-        {
-            var methods = new Methods(new PackageOptions
-            {
-                ExportLicenseTexts = true,
-            });
-            List<LibraryInfo> infos = new List<LibraryInfo>();
-            infos.Add(new LibraryInfo()
-            {
-                PackageName = packageName,
-                PackageVersion = packageVersion,
-                LicenseUrl = licenseUrl,
-                LicenseType = licenseType,
-            });
-            await methods.GetLicenseTexts(infos);
-            var directory = methods.GetExportDirectory();
-            var outpath = Path.Combine(directory, packageName + "_" + packageVersion + ".txt");
-            Assert.That(File.Exists(outpath));
-        }
-
+        
         // [TestCase("BenchmarkDotNet", "License.txt", "10.12.1")]
         // [Test]
         // public async Task GetLicenceFromNpkgFile_Should_Return_False(string packageName, string licenseFile, string packageVersion)

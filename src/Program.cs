@@ -39,12 +39,9 @@ namespace NugetUtility
                 var projectsWithPackages = await methods.GetPackages();
                 var mappedLibraryInfo = methods.MapPackagesToLibraryInfo(projectsWithPackages);
                 HandleInvalidLicenses(methods, mappedLibraryInfo, options.AllowedLicenseType);
-
-                if (options.ExportLicenseTexts)
-                {
-                    await methods.GetLicenseTexts(mappedLibraryInfo);
-                }
-
+                
+                await methods.GetLicenseTexts(mappedLibraryInfo);
+                
                 mappedLibraryInfo = methods.HandleDeprecateMSFTLicense(mappedLibraryInfo);
 
                 if (options.Print == true)
@@ -53,16 +50,9 @@ namespace NugetUtility
                     Console.WriteLine("Project Reference(s) Analysis...");
                     methods.PrintLicenses(mappedLibraryInfo);
                 }
-
-                if (options.JsonOutput)
-                {
-                    methods.SaveAsJson(mappedLibraryInfo);
-                }
-                else
-                {
-                   methods.SaveAsTextFile(mappedLibraryInfo);
-                }
-
+                
+                methods.SaveAsTextFile(mappedLibraryInfo);
+                
                 return 0;
             }
             catch (Exception e)
