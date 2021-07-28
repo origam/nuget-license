@@ -1045,7 +1045,12 @@ namespace NugetUtility
             StringBuilder builder = new StringBuilder(256);
             foreach (var lib in libraries)
             {
-                builder.Append($"The following software may be included in this product: {lib.PackageName}. A copy of the source code may be downloaded from {lib.PackageUrl}. This software contains the following license and notice below:");
+                builder.Append($"The following software may be included in this product: {lib.PackageName}. ");
+                if (!string.IsNullOrWhiteSpace(lib.PackageUrl))
+                {
+                    builder.Append($"A copy of the source code may be downloaded from {lib.PackageUrl}. ");
+                }
+                builder.Append($"This software contains the following license and notice below:");
                 builder.AppendLine();
                 builder.AppendLine();
                 if (!string.IsNullOrWhiteSpace(lib.Copyright))
@@ -1067,6 +1072,7 @@ namespace NugetUtility
                     throw new Exception($"License of the package {lib.PackageName} was not found.");
                 }
                 builder.Append($" {lib.LicenseText}");
+                builder.AppendLine();
                 builder.AppendLine();
                 builder.AppendLine();
             }
