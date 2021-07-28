@@ -25,7 +25,7 @@ namespace NugetUtility
         [Option("include-project-file", Default = false, HelpText = "Adds project file path to information when enabled.")]
         public bool IncludeProjectFile { get; set; }
 
-        [Option('l', "log-level", Default = LogLevel.Error, HelpText = "Sets log level for output display. Options: Error|Warning|Information|Verbose.")]
+        [Option('l', "log-level", Default = LogLevel.Warning, HelpText = "Sets log level for output display. Options: Error|Warning|Information|Verbose.")]
         public LogLevel LogLevelThreshold { get; set; }
 
         [Option("manual-package-information", Default = null, HelpText = "Simple json file of an array of LibraryInfo objects for manually determined packages.")]
@@ -59,7 +59,10 @@ namespace NugetUtility
         public bool IgnoreSslCertificateErrors { get; set; }
 
         [Option("use-project-assets-json", Default = false, HelpText = "Use the resolved project.assets.json file for each project as the source of package information. Requires the -t option. Requires `nuget restore` or `dotnet restore` to be run first.")]
-        public bool UseProjectAssetsJson { get; set; }
+        public bool UseProjectAssetsJson { get; set; }        
+        
+        [Option("update-cached-html-licenses", Default = false, HelpText = "If LicenseUrl points to a web page containing html (not a file) the license cannot be extracted directly. A local license file has to be created so that the tool can read the license from it. Use this option after you have updated the file to remove the error saying that the html in the LicenseHtml has changed since the last run.")]
+        public bool UpdateCachedHtmlLicenses { get; set; }
 
         [Usage(ApplicationAlias = "dotnet-project-licenses")]
         public static IEnumerable<Example> Examples

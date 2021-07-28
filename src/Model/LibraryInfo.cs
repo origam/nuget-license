@@ -1,4 +1,5 @@
 using System;
+using Newtonsoft.Json;
 
 namespace NugetUtility
 {
@@ -16,7 +17,11 @@ namespace NugetUtility
         public string LicenseType { get; set; }
         public string Projects { get; set; }
         public Repository Repository { get; set; }
-        public string Source { get; set; }
+        public Metadata SourceData { get; set; }
+
+        public string Source =>
+            JsonConvert.SerializeObject(SourceData, Formatting.Indented);
+        public string LicenseTextHtml { get; set; }
 
         public override string ToString()
         {

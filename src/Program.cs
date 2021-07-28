@@ -52,7 +52,8 @@ namespace NugetUtility
                 }
                 
                 methods.SaveAsTextFile(mappedLibraryInfo);
-                
+                methods.PersistRunInfo(mappedLibraryInfo);
+                    
                 return 0;
             }
             catch (Exception e)

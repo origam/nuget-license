@@ -37,6 +37,8 @@ namespace NugetUtility
         private readonly IReadOnlyDictionary<string, string> _licenseMappings;
         private readonly PackageOptions _packageOptions;
         private readonly XmlSerializer _serializer;
+        private string _lastRunInfosFile = "LastRunInfos.json";
+        private readonly List<LibraryInfo> _lastRunInfos;
 
         internal static bool IgnoreSslCertificateErrorCallback(HttpRequestMessage message, System.Security.Cryptography.X509Certificates.X509Certificate2 cert, System.Security.Cryptography.X509Certificates.X509Chain chain, System.Net.Security.SslPolicyErrors sslPolicyErrors)
             => true;
@@ -65,6 +67,7 @@ namespace NugetUtility
             _serializer = new XmlSerializer(typeof(Package));
             _packageOptions = packageOptions;
             _licenseMappings = packageOptions.LicenseToUrlMappingsDictionary;
+            _lastRunInfos = LoadLastRunInfos();
         }
 
         /// <summary>
@@ -375,7 +378,7 @@ namespace NugetUtility
                 LicenseUrl = manual?.LicenseUrl ?? licenseUrl ?? string.Empty,
                 Projects = _packageOptions.IncludeProjectFile ? projectFile : null,
                 Repository = item.Metadata.Repository,
-                Source =  JsonConvert.SerializeObject(item.Metadata, Formatting.Indented)
+                SourceData =  item.Metadata
             };
         }
 
@@ -798,8 +801,7 @@ namespace NugetUtility
 
         private void AddLicenseTextFromLocalFile(LibraryInfo info)
         {
-            string fileInOverridesDir = Path.Combine(licenseOverrideDir,
-                GetLicenseFileName(info));
+            string fileInOverridesDir = GetLicenseOverrideFile(info);
             if (!File.Exists(fileInOverridesDir))
             {
                 throw new Exception(
@@ -807,6 +809,12 @@ namespace NugetUtility
             }
 
             info.SetLicenseText(File.ReadAllText(fileInOverridesDir), "Local File");
+        }
+
+        private static string GetLicenseOverrideFile(LibraryInfo info)
+        {
+            return Path.Combine(licenseOverrideDir,
+                GetLicenseFileName(info));
         }
 
         private void AddLicenseTextFromGitHub(LibraryInfo info)
@@ -884,7 +892,29 @@ namespace NugetUtility
             }
 
             string license = await DownloadFile(source);
-            if (!IsHtml(license))
+            if (IsHtml(license))
+            {
+                info.LicenseTextHtml = license;
+                LibraryInfo previousRunInfo = _lastRunInfos.FirstOrDefault(
+                    prevInfo => prevInfo.PackageName == info.PackageName &&
+                                prevInfo.PackageVersion == info.PackageVersion);
+                if (previousRunInfo != null && 
+                    previousRunInfo.LicenseTextSource != info.LicenseTextSource)
+                {
+                    if (_packageOptions.UpdateCachedHtmlLicenses)
+                    {
+                        WriteOutput(
+                            $"Over writing cached html for LicenseUrl for package {info} because --update-cached-html-licenses is set.",
+                            logLevel: LogLevel.Always);
+                    }
+                    else
+                    {
+                        string fileInOverridesDir = GetLicenseOverrideFile(info);
+                        throw new Exception($"The LicenseUrl of package {info} is pointing to a web page with html, not a file and the page contents has changed since the last run. Please update the local license file {fileInOverridesDir} and run the tool again with option --update-cached-html-licenses");
+                    }
+                }
+            }
+            else
             {
                 info.SetLicenseText(license, "LicenseUrl");
             }
@@ -975,11 +1005,12 @@ namespace NugetUtility
             if (!libraries.Any()) { return; }
 
             WriteOutput(Environment.NewLine + "References:", logLevel: LogLevel.Always);
-            WriteOutput(libraries.ToStringTable(new[] { "Reference", "Version", "License Type", "License" },
+            WriteOutput(libraries.ToStringTable(new[] { "Reference", "Version", "License Type", "LicenseUrl", "LicenseTextSource" },
                                                             a => a.PackageName ?? "---",
                                                             a => a.PackageVersion ?? "---",
                                                             a => a.LicenseType ?? "---",
-                                                            a => a.LicenseUrl ?? "---"), logLevel: LogLevel.Always);
+                                                            a => a.LicenseUrl ?? "---",
+                                                            a => a.LicenseTextSource ?? "---"), logLevel: LogLevel.Always);
         }
 
         public void SaveAsTextFile(List<LibraryInfo> libraries)
@@ -1032,6 +1063,25 @@ namespace NugetUtility
             }
         }
 
-        private void WriteOutput(string line, Exception exception = null, LogLevel logLevel = LogLevel.Information) => WriteOutput(() => line, exception, logLevel);
+        private void WriteOutput(string line, Exception exception = null, LogLevel logLevel = LogLevel.Information) =>
+            WriteOutput(() => line, exception, logLevel);
+
+        public void PersistRunInfo(List<LibraryInfo> mappedLibraryInfo)
+        {
+            string serializedInfos = JsonConvert.SerializeObject(
+                mappedLibraryInfo, Formatting.Indented);
+            File.WriteAllText(_lastRunInfosFile, serializedInfos);
+        }
+
+        private List<LibraryInfo> LoadLastRunInfos()
+        {
+            if (!File.Exists(_lastRunInfosFile))
+            {
+                return new List<LibraryInfo>();
+            }
+
+            string serializedInfos = File.ReadAllText(_lastRunInfosFile);
+            return JsonConvert.DeserializeObject<List<LibraryInfo>>(serializedInfos);
+        }
     }
 }
