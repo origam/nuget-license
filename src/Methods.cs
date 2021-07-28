@@ -783,7 +783,7 @@ namespace NugetUtility
         public async Task AddLicenseTexts (List<LibraryInfo> infos) {
             foreach (var info in infos)
             {
-                AddLicenseTextFromGitHub(info);
+                await AddLicenseTextFromGitHub(info);
                 if (!string.IsNullOrEmpty(info.LicenseText))
                 {
                     continue;
@@ -817,7 +817,7 @@ namespace NugetUtility
                 GetLicenseFileName(info));
         }
 
-        private void AddLicenseTextFromGitHub(LibraryInfo info)
+        private async Task AddLicenseTextFromGitHub(LibraryInfo info)
         {
             if (info.Repository?.Type?.ToLower() != "git" || string.IsNullOrEmpty(info.Repository.Url))
             {
@@ -831,21 +831,34 @@ namespace NugetUtility
                 github.Credentials = tokenAuth;
             }
 
-            var licenseFilePath = github
-                .Repository
-                .Content
-                .GetAllContents(gitHubUrlParser.User, gitHubUrlParser.RepositoryName).Result
-                .FirstOrDefault(item => item.Name.ToLower().Contains("license"))
-                ?.Path;
+            string licenseFilePath = null;
+            try
+            {
+                var allContents = await github
+                    .Repository
+                    .Content
+                    .GetAllContents(gitHubUrlParser.User,
+                        gitHubUrlParser.RepositoryName);
+                licenseFilePath = allContents
+                    .FirstOrDefault(item => item.Name.ToLower().Contains("license"))
+                    ?.Path;
+            }
+            catch (NotFoundException ex)
+            {
+                WriteOutput(
+                    $"Package {info} does not have repository at {info.Repository.Url} even though the NuGet info says it does.",
+                    logLevel: LogLevel.Warning);
+                return;
+            }
+
             if (licenseFilePath == null)
             {
                 return;
             }
 
-            var licenseText = github
+            var licenseText = (await github
                 .Repository
-                .Content.GetAllContents(gitHubUrlParser.User, gitHubUrlParser.RepositoryName, licenseFilePath)
-                .Result
+                .Content.GetAllContents(gitHubUrlParser.User, gitHubUrlParser.RepositoryName, licenseFilePath))
                 .FirstOrDefault()
                 ?.Content;
             if (!string.IsNullOrEmpty(licenseText))
@@ -860,7 +873,6 @@ namespace NugetUtility
                     $"GitHub api request limit is running out! Requests left: {lastApiInfo.RateLimit.Remaining}, Limit: {lastApiInfo.RateLimit.Limit}, Resets at: {lastApiInfo.RateLimit.Reset}",
                     logLevel: LogLevel.Warning);
             }
-
         }
 
         private async Task AddLicenseTextFormLicenseUrl(LibraryInfo info)

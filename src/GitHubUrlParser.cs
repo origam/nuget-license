@@ -20,7 +20,9 @@ namespace NugetUtility
 
             string[] splitUrl = repositoryUrl.Split("/");
             User = splitUrl[3];
-            RepositoryName = splitUrl[4];
+            RepositoryName = splitUrl[4].EndsWith(".git")
+                ? splitUrl[4].Substring(0, splitUrl[4].Length-4) 
+                : splitUrl[4];
         }
     }
 }
