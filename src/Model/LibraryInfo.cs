@@ -11,7 +11,8 @@ namespace NugetUtility
         public string [] Authors { get; set; }
         public string Description { get; set; }
         public string LicenseUrl { get; set; }
-        public string LicenseText { get; set; }
+        public string LicenseText { get; private set; }
+        public string LicenseTextSource { get; private set; }
         public string LicenseType { get; set; }
         public string Projects { get; set; }
         public Repository Repository { get; set; }
@@ -21,5 +22,12 @@ namespace NugetUtility
         {
             return $"{PackageName} v{PackageVersion}";
         }
+
+        public void SetLicenseText(string licenseText, string licenseTextSource)
+        {
+            LicenseText = licenseText;
+            LicenseTextSource = licenseTextSource;
+        }
+        
     }
 }

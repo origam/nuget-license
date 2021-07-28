@@ -777,26 +777,26 @@ namespace NugetUtility
             return result;
         }
 
-        public async Task GetLicenseTexts (List<LibraryInfo> infos) {
+        public async Task AddLicenseTexts (List<LibraryInfo> infos) {
             foreach (var info in infos)
             {
-                info.LicenseText = GetLicenseTextFromGitHub(info);
+                AddLicenseTextFromGitHub(info);
                 if (!string.IsNullOrEmpty(info.LicenseText))
                 {
                     continue;
                 }
 
-                await GetLicenseTextFormLicenseUrl(info);
+                await AddLicenseTextFormLicenseUrl(info);
                 if (!string.IsNullOrEmpty(info.LicenseText))
                 {
                     continue;
                 }
 
-                info.LicenseText = GetLicenseTextFromLocalFile(info);
+                AddLicenseTextFromLocalFile(info);
             }
         }
 
-        private string GetLicenseTextFromLocalFile(LibraryInfo info)
+        private void AddLicenseTextFromLocalFile(LibraryInfo info)
         {
             string fileInOverridesDir = Path.Combine(licenseOverrideDir,
                 GetLicenseFileName(info));
@@ -806,14 +806,14 @@ namespace NugetUtility
                     $"Since all other ways of getting the license text have failed we were trying to get the license text from a local file but the file was not found. Please find the license text and save it into {fileInOverridesDir}\nPackage info:\n{info.Source}");
             }
 
-            return File.ReadAllText(fileInOverridesDir);
+            info.SetLicenseText(File.ReadAllText(fileInOverridesDir), "Local File");
         }
 
-        private string GetLicenseTextFromGitHub(LibraryInfo info)
+        private void AddLicenseTextFromGitHub(LibraryInfo info)
         {
             if (info.Repository?.Type?.ToLower() != "git" || string.IsNullOrEmpty(info.Repository.Url))
             {
-                return null;
+                return;
             }
             var gitHubUrlParser = new GitHubUrlParser(info.Repository.Url);
             var github = new GitHubClient(new ProductHeaderValue("LicenseGetter"));
@@ -826,7 +826,7 @@ namespace NugetUtility
                 ?.Path;
             if (licenseFilePath == null)
             {
-                return null;
+                return;
             }
 
             var licenseText = github
@@ -835,10 +835,13 @@ namespace NugetUtility
                 .Result
                 .FirstOrDefault()
                 ?.Content;
-            return licenseText;
+            if (!string.IsNullOrEmpty(licenseText))
+            {
+                info.SetLicenseText(licenseText, "GitHub");
+            }
         }
 
-        private async Task GetLicenseTextFormLicenseUrl(LibraryInfo info)
+        private async Task AddLicenseTextFormLicenseUrl(LibraryInfo info)
         {
             if (string.IsNullOrEmpty(info.LicenseUrl))
             {
@@ -848,10 +851,11 @@ namespace NugetUtility
             var source = info.LicenseUrl;
             if (source == deprecateNugetLicense)
             {
-                info.LicenseText = await GetLicenceFromNpkgFile(info.PackageName,
+                var licenseText = await GetLicenceFromNpkgFile(info.PackageName,
                     info.LicenseType, info.PackageVersion);
-                if (!string.IsNullOrEmpty(info.LicenseText))
+                if (!string.IsNullOrEmpty(licenseText))
                 {
+                    info.SetLicenseText(licenseText, "LicenseUrl (NpkgFile)");
                     return;
                 }
             }
@@ -859,20 +863,22 @@ namespace NugetUtility
             if (source == "http://go.microsoft.com/fwlink/?LinkId=329770" || source ==
                 "https://dotnet.microsoft.com/en/dotnet_library_license.htm")
             {
-                info.LicenseText = await GetLicenceFromNpkgFile(info.PackageName,
+                var licenseText = await GetLicenceFromNpkgFile(info.PackageName,
                     "dotnet_library_license.txt", info.PackageVersion);
-                if (!string.IsNullOrEmpty(info.LicenseText))
+                if (!string.IsNullOrEmpty(licenseText))
                 {
+                    info.SetLicenseText(licenseText, "LicenseUrl (NpkgFile)");
                     return;
                 }
             }
 
             if (source.StartsWith("https://licenses.nuget.org"))
             {
-                info.LicenseText = await GetLicenceFromNpkgFile(info.PackageName,
+                var licenseText = await GetLicenceFromNpkgFile(info.PackageName,
                     "License.txt", info.PackageVersion);
-                if (!string.IsNullOrEmpty(info.LicenseText))
+                if (!string.IsNullOrEmpty(licenseText))
                 {
+                    info.SetLicenseText(licenseText, "LicenseUrl (NpkgFile)");
                     return;
                 }
             }
@@ -880,7 +886,7 @@ namespace NugetUtility
             string license = await DownloadFile(source);
             if (!IsHtml(license))
             {
-                info.LicenseText = license;
+                info.SetLicenseText(license, "LicenseUrl");
             }
         }
         

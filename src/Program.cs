@@ -40,7 +40,7 @@ namespace NugetUtility
                 var mappedLibraryInfo = methods.MapPackagesToLibraryInfo(projectsWithPackages);
                 HandleInvalidLicenses(methods, mappedLibraryInfo, options.AllowedLicenseType);
                 
-                await methods.GetLicenseTexts(mappedLibraryInfo);
+                await methods.AddLicenseTexts(mappedLibraryInfo);
                 
                 mappedLibraryInfo = methods.HandleDeprecateMSFTLicense(mappedLibraryInfo);
 
