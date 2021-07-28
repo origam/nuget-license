@@ -825,7 +825,12 @@ namespace NugetUtility
             }
             var gitHubUrlParser = new GitHubUrlParser(info.Repository.Url);
             var github = new GitHubClient(new ProductHeaderValue("LicenseGetter"));
-            
+            if (!string.IsNullOrWhiteSpace(_packageOptions.GitHubAuthToken))
+            {
+                var tokenAuth = new Credentials(_packageOptions.GitHubAuthToken);
+                github.Credentials = tokenAuth;
+            }
+
             var licenseFilePath = github
                 .Repository
                 .Content
@@ -847,6 +852,15 @@ namespace NugetUtility
             {
                 info.SetLicenseText(licenseText, "GitHub");
             }
+
+            ApiInfo lastApiInfo = github.GetLastApiInfo();
+            if (lastApiInfo.RateLimit.Remaining < 20)
+            {
+                WriteOutput(
+                    $"GitHub api request limit is running out! Requests left: {lastApiInfo.RateLimit.Remaining}, Limit: {lastApiInfo.RateLimit.Limit}, Resets at: {lastApiInfo.RateLimit.Reset}",
+                    logLevel: LogLevel.Warning);
+            }
+
         }
 
         private async Task AddLicenseTextFormLicenseUrl(LibraryInfo info)

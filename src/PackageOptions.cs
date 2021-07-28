@@ -29,7 +29,10 @@ namespace NugetUtility
         public LogLevel LogLevelThreshold { get; set; }
 
         [Option("manual-package-information", Default = null, HelpText = "Simple json file of an array of LibraryInfo objects for manually determined packages.")]
-        public string ManualInformationOption { get; set; }
+        public string ManualInformationOption { get; set; }   
+        
+        [Option("git-hub-auth-token", Default = null, HelpText = "GitHub authentication token to get licenses from public repositories")]
+        public string GitHubAuthToken { get; set; }
 
         [Option("licenseurl-to-license-mappings", Default = null, HelpText = "Simple json file of Dictinary<string,string> to override default mappings")]
         public string LicenseToUrlMappingsOption { get; set; }
