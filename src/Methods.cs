@@ -1048,6 +1048,11 @@ namespace NugetUtility
                                                             a => a.LicenseType ?? "---",
                                                             a => a.LicenseUrl ?? "---",
                                                             a => a.LicenseTextSource ?? "---"), logLevel: LogLevel.Always);
+            
+            WriteOutput(Environment.NewLine + $"Total packages: {libraries.Count}",
+                logLevel: LogLevel.Always);            
+            WriteOutput($"Missing license text: {libraries.Count(x => string.IsNullOrWhiteSpace(x.LicenseText))}",
+                logLevel: LogLevel.Always);
         }
 
         public void SaveAsTextFile(List<LibraryInfo> libraries)
