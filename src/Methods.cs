@@ -344,6 +344,7 @@ namespace NugetUtility
             }
             
             return libraryInfos
+                .Distinct(LibraryNameAndVersionComparer.Default)
                 .OrderBy(p => p.PackageName)
                 .ToList();
         }
