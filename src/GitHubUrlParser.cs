@@ -6,9 +6,7 @@ namespace NugetUtility
     {
         public string User { get; }
         public string RepositoryName { get; }
-
-        public string LicenseUrl =>
-            $"https://raw.githubusercontent.com/{User}/{RepositoryName}/master/LICENSE";
+        
         public GitHubUrlParser(string repositoryUrl)
         {
             if (string.IsNullOrWhiteSpace(repositoryUrl) ||
