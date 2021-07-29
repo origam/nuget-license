@@ -371,6 +371,7 @@ namespace NugetUtility
                     item.Metadata.ProjectUrl ?? string.Empty,
                 Copyright = item.Metadata.Copyright ?? string.Empty,
                 Authors = manual?.Authors ?? item.Metadata.Authors?.Split(',') ?? new string[] { },
+                Owners = item.Metadata.Owners?.Split(',') ?? new string[] { },
                 Description = !string.IsNullOrWhiteSpace(manual?.Description) ?
                     manual.Description :
                     item.Metadata.Description ?? string.Empty,
@@ -1072,16 +1073,23 @@ namespace NugetUtility
                 if (!string.IsNullOrWhiteSpace(lib.Copyright))
                 {
                     builder.Append($"{lib.Copyright}");
-                }
-                else
+                    builder.AppendLine();
+                }               
+                if (lib.Authors != null && lib.Authors.Length != 0)
                 {
-                    if (lib.Authors == null || lib.Authors.Length == 0)
-                    {
-                        throw new Exception($"Package {lib.PackageName} has not copyright and author.");
-                    }
                     builder.Append($"Authors: {string.Join(", ",lib.Authors)}");
+                    builder.AppendLine();
+                }               
+                if (lib.Owners != null && lib.Owners.Length != 0)
+                {
+                    builder.Append($"Owners: {string.Join(", ",lib.Owners)}");
+                    builder.AppendLine();
                 }
-                builder.AppendLine();
+                if (string.IsNullOrWhiteSpace(lib.Copyright) && 
+                    (lib.Authors == null || lib.Authors.Length == 0))
+                {
+                    throw new Exception($"Package {lib} has not copyright and author.");
+                }
                 builder.AppendLine();
                 if (string.IsNullOrWhiteSpace(lib.LicenseText))
                 {

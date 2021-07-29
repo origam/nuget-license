@@ -10,6 +10,7 @@ namespace NugetUtility
         public string PackageUrl { get; set; }
         public string Copyright { get; set; }
         public string [] Authors { get; set; }
+        public string[] Owners { get; set; }
         public string Description { get; set; }
         public string LicenseUrl { get; set; }
         public string LicenseText { get; private set; }
