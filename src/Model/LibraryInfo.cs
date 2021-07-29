@@ -29,8 +29,13 @@ namespace NugetUtility
             return $"{PackageName} v{PackageVersion}";
         }
 
-        public void SetLicenseText(string licenseText, string licenseTextSource)
+        public void TrySetLicenseText(string licenseText, string licenseTextSource)
         {
+            if (string.IsNullOrWhiteSpace(licenseText))
+            {
+                return;
+            }
+
             LicenseText = licenseText;
             LicenseTextSource = licenseTextSource;
         }

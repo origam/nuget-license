@@ -805,7 +805,7 @@ namespace NugetUtility
                     logLevel: LogLevel.Error); 
             }
 
-            info.SetLicenseText(licenseText, "Local File");
+            info.TrySetLicenseText(licenseText, "Local File");
         }
 
         private static string GetLicenseOverrideFile(LibraryInfo info)
@@ -862,7 +862,7 @@ namespace NugetUtility
                 ?.Content;
             if (!string.IsNullOrEmpty(licenseText))
             {
-                info.SetLicenseText(licenseText, "GitHub");
+                info.TrySetLicenseText(licenseText, "GitHub");
             }
 
             ApiInfo lastApiInfo = github.GetLastApiInfo();
@@ -888,7 +888,7 @@ namespace NugetUtility
                     info.LicenseType, info.PackageVersion);
                 if (!string.IsNullOrEmpty(licenseText))
                 {
-                    info.SetLicenseText(licenseText, "LicenseUrl (NpkgFile)");
+                    info.TrySetLicenseText(licenseText, "LicenseUrl (NpkgFile)");
                     return;
                 }
             }
@@ -900,7 +900,7 @@ namespace NugetUtility
                     "dotnet_library_license.txt", info.PackageVersion);
                 if (!string.IsNullOrEmpty(licenseText))
                 {
-                    info.SetLicenseText(licenseText, "LicenseUrl (NpkgFile)");
+                    info.TrySetLicenseText(licenseText, "LicenseUrl (NpkgFile)");
                     return;
                 }
             }
@@ -911,7 +911,7 @@ namespace NugetUtility
                     "License.txt", info.PackageVersion);
                 if (!string.IsNullOrEmpty(licenseText))
                 {
-                    info.SetLicenseText(licenseText, "LicenseUrl (NpkgFile)");
+                    info.TrySetLicenseText(licenseText, "LicenseUrl (NpkgFile)");
                     return;
                 }
             }
@@ -941,7 +941,7 @@ namespace NugetUtility
             }
             else
             {
-                info.SetLicenseText(license, "LicenseUrl");
+                info.TrySetLicenseText(license, "LicenseUrl");
             }
         }
         
