@@ -836,7 +836,9 @@ namespace NugetUtility
                     .GetAllContents(gitHubUrlParser.User,
                         gitHubUrlParser.RepositoryName);
                 licenseFilePath = allContents
-                    .FirstOrDefault(item => item.Name.ToLower().Contains("license"))
+                    .FirstOrDefault(item => 
+                        item.Name.ToLower().Contains("license") ||
+                        item.Name.ToLower().Contains("copying"))
                     ?.Path;
             }
             catch (NotFoundException ex)
