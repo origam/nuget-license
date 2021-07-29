@@ -39,6 +39,7 @@ namespace NugetUtility
         private readonly XmlSerializer _serializer;
         private string _lastRunInfosFile = "LastRunInfos.json";
         private readonly List<LibraryInfo> _lastRunInfos;
+        private readonly NupkgFileCache _nupkgFileCache;
 
         internal static bool IgnoreSslCertificateErrorCallback(HttpRequestMessage message, System.Security.Cryptography.X509Certificates.X509Certificate2 cert, System.Security.Cryptography.X509Certificates.X509Chain chain, System.Net.Security.SslPolicyErrors sslPolicyErrors)
             => true;
@@ -68,6 +69,7 @@ namespace NugetUtility
             _packageOptions = packageOptions;
             _licenseMappings = packageOptions.LicenseToUrlMappingsDictionary;
             _lastRunInfos = LoadLastRunInfos();
+            _nupkgFileCache =  new NupkgFileCache(fallbackPackageUrl, _httpClient);
         }
 
         /// <summary>
@@ -729,39 +731,21 @@ namespace NugetUtility
         /// <returns></returns>
         public async Task<string> GetLicenceFromNpkgFile(string package, string licenseFile, string version)
         {
-            var nupkgEndpoint = new Uri(string.Format(fallbackPackageUrl, package, version));
-            WriteOutput(() => $"Attempting to download: {nupkgEndpoint}", logLevel: LogLevel.Verbose);
-            using var packageRequest = new HttpRequestMessage(HttpMethod.Get, nupkgEndpoint);
-            using var packageResponse = await _httpClient.SendAsync(packageRequest, CancellationToken.None);
-
-            if (!packageResponse.IsSuccessStatusCode)
-            {
-                throw new Exception(packageResponse.ReasonPhrase);
-            }
-
-            var outpath =  $"{package}_{version}.nupkg.zip";
-
-            using (var fileStream = File.OpenWrite(outpath))
-            {
-                await packageResponse.Content.CopyToAsync(fileStream);
-            }
-
-            using (ZipArchive archive = ZipFile.OpenRead(outpath))
+            var pathToNupkgFile = await _nupkgFileCache.GetPath(package, version);
+            string licenseText = null;
+            using (ZipArchive archive = ZipFile.OpenRead(pathToNupkgFile))
             {
                 var sample = archive.GetEntry(licenseFile);
                 if (sample != null)
                 {
                     var stream = sample.Open();
                     StreamReader reader = new StreamReader(stream);
-                    return reader.ReadToEnd();
-                    
+                    licenseText = await reader.ReadToEndAsync();
                 }
             }
-
-            File.Delete(outpath);
-            return null;
+            return licenseText;
         }
-
+        
         /// <summary>
         /// HandleMSFTLicenses handle deprecate MSFT nuget licenses
         /// </summary>
