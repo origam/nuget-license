@@ -12,7 +12,7 @@ namespace NugetUtility
         public GitHubUrlParser(string repositoryUrl)
         {
             if (string.IsNullOrWhiteSpace(repositoryUrl) ||
-                !repositoryUrl.StartsWith("http"))
+                (!repositoryUrl.StartsWith("http") && !repositoryUrl.StartsWith("git://")))
             {
                 throw new Exception(
                     $"Cannot Parse {repositoryUrl} to repositoryUrl");
