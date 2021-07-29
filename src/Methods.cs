@@ -804,11 +804,22 @@ namespace NugetUtility
             string fileInOverridesDir = GetLicenseOverrideFile(info);
             if (!File.Exists(fileInOverridesDir))
             {
-                throw new Exception(
-                    $"Since all other ways of getting the license text have failed we were trying to get the license text from a local file but the file was not found. Please find the license text and save it into {fileInOverridesDir}\nPackage info:\n{info.Source}");
+                File.Create(fileInOverridesDir);
+                WriteOutput(
+                    $"Since all other ways of getting the license text have failed we were trying to get the license text from a local file but the file was NOT FOUND. Please find the license text and save it into\n{fileInOverridesDir}\nPackage info:\n{info.Source}",
+                    logLevel: LogLevel.Error);
+                return;
             }
 
-            info.SetLicenseText(File.ReadAllText(fileInOverridesDir), "Local File");
+            string licenseText = File.ReadAllText(fileInOverridesDir);
+            if (string.IsNullOrWhiteSpace(licenseText))
+            {
+                WriteOutput(
+                    $"Since all other ways of getting the license text have failed we were trying to get the license text from a local file but the file was EMPTY. Please find the license text and save it into\n{fileInOverridesDir}\nPackage info:\n{info.Source}",
+                    logLevel: LogLevel.Error); 
+            }
+
+            info.SetLicenseText(licenseText, "Local File");
         }
 
         private static string GetLicenseOverrideFile(LibraryInfo info)
