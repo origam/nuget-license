@@ -1093,7 +1093,10 @@ namespace NugetUtility
                 builder.AppendLine();
             }
 
-            File.WriteAllText(GetOutputFilename("attributions.txt"), builder.ToString());
+            string licenses = builder.ToString()
+                .Replace("\r\n", "\n")
+                .Replace("\n", "\r\n");
+            File.WriteAllText(GetOutputFilename("Attributions.txt"), licenses);
         }
 
         private void WriteOutput(Func<string> line, Exception exception = null, LogLevel logLevel = LogLevel.Information)
