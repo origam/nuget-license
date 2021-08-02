@@ -17,6 +17,7 @@ namespace NugetUtility
 
         private static async Task<int> Execute(PackageOptions options)
         {
+            DateTime startTime = DateTime.Now;
             if (string.IsNullOrWhiteSpace(options.ProjectDirectory))
             {
                 Console.WriteLine("ERROR(S):");
@@ -37,12 +38,15 @@ namespace NugetUtility
             {
                 Methods methods = new Methods(options);
                 var projectsWithPackages = await methods.GetPackages();
-                var mappedLibraryInfo = methods.MapPackagesToLibraryInfo(projectsWithPackages);
-                HandleInvalidLicenses(methods, mappedLibraryInfo, options.AllowedLicenseType);
-                
+                var mappedLibraryInfo =
+                    methods.MapPackagesToLibraryInfo(projectsWithPackages);
+                HandleInvalidLicenses(methods, mappedLibraryInfo,
+                    options.AllowedLicenseType);
+
                 await methods.AddLicenseTexts(mappedLibraryInfo);
-                
-                mappedLibraryInfo = methods.HandleDeprecateMSFTLicense(mappedLibraryInfo);
+
+                mappedLibraryInfo =
+                    methods.HandleDeprecateMSFTLicense(mappedLibraryInfo);
 
                 if (options.Print == true)
                 {
@@ -60,6 +64,11 @@ namespace NugetUtility
             {
                 Console.WriteLine(e);
                 return -1;
+            }
+            finally
+            {
+                DateTime endTime = DateTime.Now;
+                Console.WriteLine($"Time elapsed: {endTime - startTime}");
             }
         }
 
