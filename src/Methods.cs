@@ -785,17 +785,24 @@ namespace NugetUtility
                         return;
                     }
 
-                    CheckHtmlLicenseDidNotChange(info);
+                    CheckLocalLicenseFileCanBeUsedOrThrow(info);
                     AddLicenseTextFromLocalFile(info);
                 });
             await Task.WhenAll(getLicenseTasks);
         }
 
-        private void CheckHtmlLicenseDidNotChange(LibraryInfo info)
+        private void CheckLocalLicenseFileCanBeUsedOrThrow(LibraryInfo info)
         {
+            string localLicenseFile = GetLicenseOverrideFile(info);
             LibraryInfo previousRunInfo = _lastRunInfos.FirstOrDefault(
                 prevInfo => prevInfo.PackageName == info.PackageName &&
                             prevInfo.PackageVersion == info.PackageVersion);
+
+            if (previousRunInfo == null && !File.Exists(localLicenseFile))
+            {
+                TryReuseLicenseFileFromPreviousPackageVersion(info);
+            }
+
             if (previousRunInfo != null && 
                 previousRunInfo.LicenseTextHtml != info.LicenseTextHtml)
             {
@@ -807,8 +814,26 @@ namespace NugetUtility
                 }
                 else
                 {
-                    string fileInOverridesDir = GetLicenseOverrideFile(info);
-                    throw new Exception($"The LicenseUrl of package {info} is pointing to a web page with html, not a file and the page contents has changed since the last run. Please update the local license file {fileInOverridesDir} and run the tool again with option --update-cached-html-licenses");
+                    throw new Exception($"The LicenseUrl of package {info} is pointing to a web page with html, not a file and the page contents has changed since the last run. Please update the local license file {localLicenseFile} and run the tool again with option --update-cached-html-licenses");
+                }
+            }
+        }
+
+        private void TryReuseLicenseFileFromPreviousPackageVersion(LibraryInfo info)
+        {
+            LibraryInfo infoOfPreviousVersionPackage = _lastRunInfos
+                .Where(prevInfo => prevInfo.PackageName == info.PackageName)
+                .OrderBy(prevInfo => prevInfo.PackageVersion)
+                .Last();
+            if (infoOfPreviousVersionPackage.LicenseTextHtml ==
+                info.LicenseTextHtml)
+            {
+                string licenseFile = GetLicenseOverrideFile(info);
+                if (!File.Exists(licenseFile))
+                {
+                    string licenseFileOfPreviousVersion =
+                        GetLicenseOverrideFile(infoOfPreviousVersionPackage);
+                    File.Copy(licenseFileOfPreviousVersion, licenseFile);
                 }
             }
         }
