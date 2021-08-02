@@ -1119,7 +1119,13 @@ namespace NugetUtility
                 builder.AppendLine();
                 if (string.IsNullOrWhiteSpace(lib.LicenseText))
                 {
-                    throw new Exception($"License of the package {lib.PackageName} was not found.");
+                    WriteOutput($"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+                        logLevel: LogLevel.Error);
+                    WriteOutput($"Attributions file could not be saved because license of the package {lib.PackageName} was not found. You probably have to add a locale license file. Please look at the console output above.",
+                        logLevel: LogLevel.Error);
+                    WriteOutput($"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+                        logLevel: LogLevel.Error);
+                    return;
                 }
                 builder.Append($" {lib.LicenseText}");
                 builder.AppendLine();
