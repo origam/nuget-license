@@ -6,7 +6,7 @@ namespace NugetUtility
     public class LibraryInfo
     {
         public string PackageName { get; set; }
-        public string PackageVersion { get; set; }
+        public Version PackageVersion { get; set; }
         public string PackageUrl { get; set; }
         public string Copyright { get; set; }
         public string [] Authors { get; set; }

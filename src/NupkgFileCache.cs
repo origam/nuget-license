@@ -36,7 +36,7 @@ namespace NugetUtility
             }
         }
 
-        public async Task<string> GetPath(string package, string version)
+        public async Task<string> GetPath(string package, Version version)
         {
             _cacheDirectory.Create();
             var pathToNupkgFile = Path.Combine(_cacheDirectory.FullName, $"{package}_{version}.nupkg.zip");
@@ -48,7 +48,7 @@ namespace NugetUtility
             return pathToNupkgFile;
         }
             
-        private async Task DownloadNupkgFile(string package, string version,
+        private async Task DownloadNupkgFile(string package, Version version,
             string pathToNupkgFile)
         {
             var nupkgEndpoint =

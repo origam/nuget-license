@@ -363,12 +363,14 @@ namespace NugetUtility
             }
 
             var manual = _packageOptions.ManualInformation
-                .FirstOrDefault(f => f.PackageName == item.Metadata.Id && f.PackageVersion == item.Metadata.Version);
+                .FirstOrDefault(f => f.PackageName == item.Metadata.Id && f.PackageVersion.ToString() == item.Metadata.Version);
 
             return new LibraryInfo
             {
                 PackageName = item.Metadata.Id ?? string.Empty,
-                PackageVersion = item.Metadata.Version ?? string.Empty,
+                PackageVersion = string.IsNullOrEmpty(item.Metadata.Version) 
+                    ? new Version(0,0,0)
+                    : new Version(item.Metadata.Version),
                 PackageUrl = !string.IsNullOrWhiteSpace(manual?.PackageUrl) ?
                     manual.PackageUrl :
                     item.Metadata.ProjectUrl ?? string.Empty,
@@ -730,7 +732,7 @@ namespace NugetUtility
         /// <param name="licenseFile"></param>
         /// <param name="version"></param>
         /// <returns></returns>
-        public async Task<string> GetLicenceFromNpkgFile(string package, string licenseFile, string version)
+        public async Task<string> GetLicenceFromNpkgFile(string package, string licenseFile, Version version)
         {
             var pathToNupkgFile = await _nupkgFileCache.GetPath(package, version);
             string licenseText = null;
@@ -1040,7 +1042,7 @@ namespace NugetUtility
             WriteOutput(Environment.NewLine + "References:", logLevel: LogLevel.Always);
             WriteOutput(libraries.ToStringTable(new[] { "Reference", "Version", "License Type", "LicenseUrl", "LicenseTextSource" },
                                                             a => a.PackageName ?? "---",
-                                                            a => a.PackageVersion ?? "---",
+                                                            a => a.PackageVersion?.ToString() ?? "---",
                                                             a => a.LicenseType ?? "---",
                                                             a => a.LicenseUrl ?? "---",
                                                             a => a.LicenseTextSource ?? "---"), logLevel: LogLevel.Always);
