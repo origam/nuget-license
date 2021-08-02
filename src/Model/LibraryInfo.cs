@@ -22,7 +22,7 @@ namespace NugetUtility
 
         public string Source =>
             JsonConvert.SerializeObject(SourceData, Formatting.Indented);
-        public string LicenseTextHtml { get; set; }
+        public HtmlLicenseLink LicenseTextHtml { get; set; }
 
         public override string ToString()
         {

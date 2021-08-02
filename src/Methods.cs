@@ -804,7 +804,7 @@ namespace NugetUtility
             }
 
             if (previousRunInfo != null && 
-                previousRunInfo.LicenseTextHtml != info.LicenseTextHtml)
+                !Equals(previousRunInfo.LicenseTextHtml, info.LicenseTextHtml))
             {
                 if (_packageOptions.UpdateCachedHtmlLicenses)
                 {
@@ -825,8 +825,7 @@ namespace NugetUtility
                 .Where(prevInfo => prevInfo.PackageName == info.PackageName)
                 .OrderBy(prevInfo => prevInfo.PackageVersion)
                 .Last();
-            if (infoOfPreviousVersionPackage.LicenseTextHtml ==
-                info.LicenseTextHtml)
+            if (Equals(infoOfPreviousVersionPackage.LicenseTextHtml, info.LicenseTextHtml))
             {
                 string licenseFile = GetLicenseOverrideFile(info);
                 if (!File.Exists(licenseFile))
@@ -977,7 +976,7 @@ namespace NugetUtility
             string license = await DownloadFile(source);
             if (IsHtml(license))
             {
-                info.LicenseTextHtml = license;
+                info.LicenseTextHtml = new HtmlLicenseLink(source, license);
             }
             else
             {
