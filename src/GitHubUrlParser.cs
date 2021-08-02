@@ -4,23 +4,55 @@ namespace NugetUtility
 {
     class GitHubUrlParser
     {
-        public string User { get; }
-        public string RepositoryName { get; }
+        private readonly string repositoryUrl;
+        private bool parsed = false;
+        private string user;
+        private string repositoryName;
+        public string User {
+            get
+            {
+                if (!parsed)
+                {
+                    Parse();
+                }
+                return user;
+            }
+        }
+        public string RepositoryName {
+            get
+            {
+                if (!parsed)
+                {
+                    Parse();
+                } 
+                return repositoryName;
+            }
+        }
         
         public GitHubUrlParser(string repositoryUrl)
         {
-            if (string.IsNullOrWhiteSpace(repositoryUrl) ||
-                (!repositoryUrl.StartsWith("http") && !repositoryUrl.StartsWith("git://")))
+            this.repositoryUrl = repositoryUrl;
+        }
+
+        private void Parse()
+        {
+            if (!IsValid())
             {
-                throw new Exception(
-                    $"Cannot Parse {repositoryUrl} to repositoryUrl");
+                throw new Exception($"Cannot Parse {repositoryUrl} to repositoryUrl");
             }
 
             string[] splitUrl = repositoryUrl.Split("/");
-            User = splitUrl[3];
-            RepositoryName = splitUrl[4].EndsWith(".git")
+            user = splitUrl[3];
+            repositoryName = splitUrl[4].EndsWith(".git")
                 ? splitUrl[4].Substring(0, splitUrl[4].Length-4) 
                 : splitUrl[4];
+        }
+
+        public bool IsValid()
+        {
+            return !string.IsNullOrWhiteSpace(repositoryUrl) && 
+                   repositoryUrl.ToLower().Contains("github") && 
+                   (repositoryUrl.StartsWith("http") || repositoryUrl.StartsWith("git://"));
         }
     }
 }

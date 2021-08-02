@@ -869,11 +869,15 @@ namespace NugetUtility
 
         private async Task AddLicenseTextFromGitHub(LibraryInfo info)
         {
-            if (info.Repository?.Type?.ToLower() != "git" || string.IsNullOrEmpty(info.Repository.Url))
+            var gitHubUrlParser = new GitHubUrlParser(info.Repository?.Url);
+            if (!gitHubUrlParser.IsValid())
+            {
+                gitHubUrlParser = new GitHubUrlParser(info.PackageUrl);
+            }            
+            if (!gitHubUrlParser.IsValid())
             {
                 return;
             }
-            var gitHubUrlParser = new GitHubUrlParser(info.Repository.Url);
             var github = new GitHubClient(new ProductHeaderValue("LicenseGetter"));
             if (!string.IsNullOrWhiteSpace(_packageOptions.GitHubAuthToken))
             {
@@ -892,6 +896,7 @@ namespace NugetUtility
                 licenseFilePath = allContents
                     .FirstOrDefault(item => 
                         item.Name.ToLower().Contains("license") ||
+                        item.Name.ToLower().Contains("licence") ||
                         item.Name.ToLower().Contains("copying"))
                     ?.Path;
             }
