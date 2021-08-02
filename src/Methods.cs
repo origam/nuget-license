@@ -782,10 +782,33 @@ namespace NugetUtility
                     {
                         return;
                     }
-            
+
+                    CheckHtmlLicenseDidNotChange(info);
                     AddLicenseTextFromLocalFile(info);
                 });
             await Task.WhenAll(getLicenseTasks);
+        }
+
+        private void CheckHtmlLicenseDidNotChange(LibraryInfo info)
+        {
+            LibraryInfo previousRunInfo = _lastRunInfos.FirstOrDefault(
+                prevInfo => prevInfo.PackageName == info.PackageName &&
+                            prevInfo.PackageVersion == info.PackageVersion);
+            if (previousRunInfo != null && 
+                previousRunInfo.LicenseTextHtml != info.LicenseTextHtml)
+            {
+                if (_packageOptions.UpdateCachedHtmlLicenses)
+                {
+                    WriteOutput(
+                        $"Over writing cached html for LicenseUrl for package {info} because --update-cached-html-licenses is set.",
+                        logLevel: LogLevel.Always);
+                }
+                else
+                {
+                    string fileInOverridesDir = GetLicenseOverrideFile(info);
+                    throw new Exception($"The LicenseUrl of package {info} is pointing to a web page with html, not a file and the page contents has changed since the last run. Please update the local license file {fileInOverridesDir} and run the tool again with option --update-cached-html-licenses");
+                }
+            }
         }
 
         private void AddLicenseTextFromLocalFile(LibraryInfo info)
@@ -923,24 +946,6 @@ namespace NugetUtility
             if (IsHtml(license))
             {
                 info.LicenseTextHtml = license;
-                LibraryInfo previousRunInfo = _lastRunInfos.FirstOrDefault(
-                    prevInfo => prevInfo.PackageName == info.PackageName &&
-                                prevInfo.PackageVersion == info.PackageVersion);
-                if (previousRunInfo != null && 
-                    previousRunInfo.LicenseTextSource != info.LicenseTextSource)
-                {
-                    if (_packageOptions.UpdateCachedHtmlLicenses)
-                    {
-                        WriteOutput(
-                            $"Over writing cached html for LicenseUrl for package {info} because --update-cached-html-licenses is set.",
-                            logLevel: LogLevel.Always);
-                    }
-                    else
-                    {
-                        string fileInOverridesDir = GetLicenseOverrideFile(info);
-                        throw new Exception($"The LicenseUrl of package {info} is pointing to a web page with html, not a file and the page contents has changed since the last run. Please update the local license file {fileInOverridesDir} and run the tool again with option --update-cached-html-licenses");
-                    }
-                }
             }
             else
             {
