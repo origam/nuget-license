@@ -766,23 +766,26 @@ namespace NugetUtility
             return result;
         }
 
-        public async Task AddLicenseTexts (List<LibraryInfo> infos) {
-            foreach (var info in infos)
-            {
-                await AddLicenseTextFromGitHub(info);
-                if (!string.IsNullOrEmpty(info.LicenseText))
+        public async Task AddLicenseTexts (List<LibraryInfo> infos)
+        {
+            var getLicenseTasks = infos
+                .Select(async info =>
                 {
-                    continue;
-                }
-
-                await AddLicenseTextFormLicenseUrl(info);
-                if (!string.IsNullOrEmpty(info.LicenseText))
-                {
-                    continue;
-                }
-
-                AddLicenseTextFromLocalFile(info);
-            }
+                    await AddLicenseTextFromGitHub(info);
+                    if (!string.IsNullOrEmpty(info.LicenseText))
+                    {
+                        return;
+                    }
+            
+                    await AddLicenseTextFormLicenseUrl(info);
+                    if (!string.IsNullOrEmpty(info.LicenseText))
+                    {
+                        return;
+                    }
+            
+                    AddLicenseTextFromLocalFile(info);
+                });
+            await Task.WhenAll(getLicenseTasks);
         }
 
         private void AddLicenseTextFromLocalFile(LibraryInfo info)
