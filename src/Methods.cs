@@ -24,7 +24,7 @@ namespace NugetUtility
         private const string deprecateNugetLicense = "https://aka.ms/deprecateLicenseUrl";
 
         private static readonly string licenseDownloadDir = "./LicenseFiles/DirectDownloads";
-        private static readonly string licenseOverrideDir = "./LicenseFiles/ManualOverrides";
+        private static readonly string licenseOverrideDir = Path.Combine(Directory.GetCurrentDirectory(), "LicenseFiles", "ManualOverrides");
         private static readonly Dictionary<Tuple<string, string>, Package> _requestCache = new Dictionary<Tuple<string, string>, Package>();
         private static readonly Dictionary<Tuple<string, string>, string> _licenseFileCache = new Dictionary<Tuple<string, string>, string>();
         /// <summary>
@@ -845,7 +845,7 @@ namespace NugetUtility
             {
                 File.Create(fileInOverridesDir);
                 WriteOutput(
-                    $"Since all other ways of getting the license text have failed we were trying to get the license text from a local file but the file was NOT FOUND. Please find the license text and save it into\n{fileInOverridesDir}\nPackage info:\n{info.Source}",
+                    $"Since all other ways of getting the license text have failed we were trying to get the license text from a local file but the file was NOT FOUND. Please find the license text and save it into\nfile://{PathToHtmlLink(fileInOverridesDir)}\nPackage info:\n{info.Source}",
                     logLevel: LogLevel.Error);
                 return;
             }
@@ -854,7 +854,7 @@ namespace NugetUtility
             if (string.IsNullOrWhiteSpace(licenseText))
             {
                 WriteOutput(
-                    $"Since all other ways of getting the license text have failed we were trying to get the license text from a local file but the file was EMPTY. Please find the license text and save it into\n{fileInOverridesDir}\nPackage info:\n{info.Source}",
+                    $"Since all other ways of getting the license text have failed we were trying to get the license text from a local file but the file was EMPTY. Please find the license text and save it into\n\"{PathToHtmlLink(fileInOverridesDir)}\"\nPackage info:\n{info.Source}",
                     logLevel: LogLevel.Error); 
             }
 

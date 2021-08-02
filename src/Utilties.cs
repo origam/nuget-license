@@ -45,5 +45,10 @@ namespace NugetUtility
 
             return File.ReadAllText(file.FullName);
         }
+
+        public static string PathToHtmlLink(string path)
+        {
+            return $"file:///{path.Replace("\\","/")}";
+        }
     }
 }
