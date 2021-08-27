@@ -8,12 +8,15 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using System.Xml.XPath;
 using Newtonsoft.Json;
 using Octokit;
 using static NugetUtility.Utilties;
+using FileMode = System.IO.FileMode;
+using Formatting = Newtonsoft.Json.Formatting;
 
 namespace NugetUtility
 {
@@ -581,7 +584,9 @@ namespace NugetUtility
         /// <returns></returns>
         private IEnumerable<string> GetProjectReferencesFromNewProjectFile(string projectPath)
         {
-            var projDefinition = XDocument.Load(projectPath);
+            using StringReader stringReader =
+                new StringReader(File.ReadAllText(projectPath));
+            var projDefinition = XDocument.Load(stringReader);
 
             // Uses an XPath instead of direct navigation (using Elements("…")) as the project file may use xml namespaces
             return projDefinition?
