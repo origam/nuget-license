@@ -12,6 +12,7 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using System.Xml.XPath;
+using HtmlAgilityPack;
 using Newtonsoft.Json;
 using Octokit;
 using static NugetUtility.Utilties;
@@ -253,7 +254,11 @@ namespace NugetUtility
                 var referencedPackages = references.Select((package) =>
                 {
                     var split = package.Split(',');
-                    return new PackageNameAndVersion { Name = split[0], Version = split[1] };
+                    return new PackageNameAndVersion
+                    {
+                        Name = split[0],
+                        Version = split[1].Replace("*", "0")
+                    };
                 });
                 var currentProjectLicenses = await this.GetNugetInformationAsync(projectFile, referencedPackages);
                 licenses[projectFile] = currentProjectLicenses;
@@ -829,14 +834,15 @@ namespace NugetUtility
             LibraryInfo infoOfPreviousVersionPackage = _lastRunInfos
                 .Where(prevInfo => prevInfo.PackageName == info.PackageName)
                 .OrderBy(prevInfo => prevInfo.PackageVersion)
-                .Last();
-            if (Equals(infoOfPreviousVersionPackage.LicenseTextHtml, info.LicenseTextHtml))
+                .LastOrDefault();
+            if (infoOfPreviousVersionPackage != null &&
+                Equals(infoOfPreviousVersionPackage.LicenseTextHtml, info.LicenseTextHtml))
             {
                 string licenseFile = GetLicenseOverrideFile(info);
-                if (!File.Exists(licenseFile))
+                string licenseFileOfPreviousVersion =
+                    GetLicenseOverrideFile(infoOfPreviousVersionPackage);
+                if (!File.Exists(licenseFile) && File.Exists(licenseFileOfPreviousVersion))
                 {
-                    string licenseFileOfPreviousVersion =
-                        GetLicenseOverrideFile(infoOfPreviousVersionPackage);
                     File.Copy(licenseFileOfPreviousVersion, licenseFile);
                 }
             }
