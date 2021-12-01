@@ -1,6 +1,7 @@
 ﻿using CommandLine;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace NugetUtility
@@ -42,6 +43,7 @@ namespace NugetUtility
                     methods.MapPackagesToLibraryInfo(projectsWithPackages);
                 HandleInvalidLicenses(methods, mappedLibraryInfo,
                     options.AllowedLicenseType);
+                mappedLibraryInfo = RemoveOrigamPackages(mappedLibraryInfo);
 
                 await methods.AddLicenseTexts(mappedLibraryInfo);
 
@@ -72,6 +74,12 @@ namespace NugetUtility
             }
         }
 
+        private static List<LibraryInfo> RemoveOrigamPackages(List<LibraryInfo> mappedLibraryInfo)
+        {
+            return mappedLibraryInfo
+                .Where(info => !info.PackageName.ToLower().Contains("origam"))
+                .ToList();
+        }
 
 
         private static void HandleInvalidLicenses(Methods methods, List<LibraryInfo> libraries, ICollection<string> allowedLicenseType)
