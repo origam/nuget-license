@@ -1097,8 +1097,10 @@ namespace NugetUtility
         {
             if (!libraries.Any()) { return; }
             StringBuilder builder = new StringBuilder(256);
-            foreach (var lib in libraries)
+            for (int i = 0; i < libraries.Count; i++)
             {
+                LibraryInfo lib = libraries[i];
+                
                 builder.Append($"The following software may be included in this product: {lib.PackageName}. ");
                 if (!string.IsNullOrWhiteSpace(lib.PackageUrl))
                 {
@@ -1140,7 +1142,7 @@ namespace NugetUtility
                 }
                 builder.Append($" {lib.LicenseText}");
                 builder.AppendLine();
-                builder.AppendLine();
+                builder.AppendLine( i == libraries.Count - 1 ? "" : "-----");
                 builder.AppendLine();
             }
 
