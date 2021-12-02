@@ -16,12 +16,18 @@ namespace OrigamAttributionsGenerator
         {
             AttributionsConfig config = GetConfig();
 
-            var attributionsFileName = "Attributions.txt";
-            await ExportCsAttributionsToFile(config, attributionsFileName);
+            string attributionsFileName = "Attributions.txt";
+            string attributionsCsFileName = "Attributions_cs.txt";
+            string attributionsJsFileName = "Attributions_js.txt";
+           
+            await ExportCsAttributionsToFile(config, attributionsCsFileName);
             Console.WriteLine("C# attributions generated");
             
-            await AddJavascriptAttributionsToFile(config, attributionsFileName);
+            await ExportJavascriptAttributionsToFile(config, attributionsJsFileName);
             Console.WriteLine("javascript attributions generated");
+
+            MergeFiles(attributionsCsFileName, attributionsJsFileName,
+                attributionsFileName);
             
             var destinations = new[]
             {
@@ -36,22 +42,21 @@ namespace OrigamAttributionsGenerator
                 File.Copy(attributionsFileName, destination, true);
                 Console.WriteLine("Attributions file copied to: " + destination);
             }
-
+            
             Console.WriteLine("Done!");
             return 0;
         }
 
-        private static async Task AddJavascriptAttributionsToFile(
-            AttributionsConfig config, string attributionsFileName)
+        private static void MergeFiles(string attributionsCsFileName,
+            string attributionsJsFileName, string attributionsFileName)
         {
-            string javascriptAttributions =
-                await GenerateJavascriptAttributions(config.PathToOrigamFrontEnd);
-
-            string csAttributions = await File.ReadAllTextAsync(attributionsFileName);
+            string csAttributions = File.ReadAllText(attributionsCsFileName);
+            var javascriptAttributions = CleanJsAttributionsFile(attributionsJsFileName);
+            
             string finalAttributions =
                 javascriptAttributions + "\r\n\r\n" + csAttributions;
-
-            await File.WriteAllTextAsync(attributionsFileName, finalAttributions);
+            
+            File.WriteAllText(attributionsFileName, finalAttributions);
         }
 
         private static async Task ExportCsAttributionsToFile(AttributionsConfig config,
@@ -69,7 +74,7 @@ namespace OrigamAttributionsGenerator
             await CsAttributionCollector.Execute(packageOptions);
         }
 
-        private static async Task<string> GenerateJavascriptAttributions(string pathToOrigamFrontEnd){
+        private static async Task ExportJavascriptAttributionsToFile(AttributionsConfig config, string attributionsJsFileName){
             
             var process = new Process
             {
@@ -83,16 +88,40 @@ namespace OrigamAttributionsGenerator
                     RedirectStandardInput = true
                 }
             };
-            string licenseOutput = "";
-
-            var tokenSource = new CancellationTokenSource();
-            bool yarnOutPutBegun = false;
+            string pathToAttributionsFile = Path.Combine(Directory.GetCurrentDirectory(), attributionsJsFileName);
+            string generateAttributionsCommand = $"yarn licenses generate-disclaimer > {pathToAttributionsFile}";
+            
+            bool yarnCommandRuns = false;
             process.OutputDataReceived += (object sender, DataReceivedEventArgs e) =>
             {
-                string? line = e.Data ?? "";
-                tokenSource.Cancel();
+                string line = e.Data ?? "";
 
-                if (yarnOutPutBegun && !line.Contains(pathToOrigamFrontEnd))
+                if (!yarnCommandRuns)
+                {
+                    yarnCommandRuns = line.Contains(generateAttributionsCommand);
+                }
+                else
+                {
+                    // will be hit on the next method call after the generateAttributionsCommand 
+                    process.Kill();
+                }
+            };
+
+            process.Start();
+            process.BeginOutputReadLine();
+            
+            process.StandardInput.WriteLine("cd " + config.PathToOrigamFrontEnd);
+            process.StandardInput.WriteLine(generateAttributionsCommand);
+            await process.WaitForExitAsync();
+        }
+
+        private static string CleanJsAttributionsFile(string attributionsJsFileName)
+        {
+            bool yarnOutPutBegun = false;
+            string licenseOutput = "";
+            foreach (string line in File.ReadLines(attributionsJsFileName))
+            {
+                if (yarnOutPutBegun)
                 {
                     licenseOutput += line + "\r\n";
                 }
@@ -104,26 +133,7 @@ namespace OrigamAttributionsGenerator
                         yarnOutPutBegun = true;
                     }
                 }
-
-                tokenSource = new CancellationTokenSource();
-                Task.Run(() =>
-                {
-                    var token = tokenSource.Token;
-                    Thread.Sleep(5000);
-                    if (token.IsCancellationRequested)
-                    {
-                        token.ThrowIfCancellationRequested();
-                    }
-                    process.Kill();
-                }, tokenSource.Token);
-            };
-
-            process.Start();
-            process.BeginOutputReadLine();
-            
-            process.StandardInput.WriteLine("cd " + pathToOrigamFrontEnd);
-            process.StandardInput.WriteLine("yarn licenses generate-disclaimer");
-            await process.WaitForExitAsync();
+            }
 
             return licenseOutput;
         }
