@@ -555,7 +555,7 @@ namespace NugetUtility
             _licenseFileCache[key] = await GetNuGetPackageFileResult<string>(package.Metadata.Id, package.Metadata.Version, package.Metadata.License.Text);
         }
 
-        private string GetOutputFilename (string defaultName) {
+        private string GetOutputFilePath (string defaultName) {
             string outputDir = GetExportDirectory ();
 
             return string.IsNullOrWhiteSpace (_packageOptions.OutputFileName) ?
@@ -1147,7 +1147,10 @@ namespace NugetUtility
             string licenses = builder.ToString()
                 .Replace("\r\n", "\n")
                 .Replace("\n", "\r\n");
-            File.WriteAllText(GetOutputFilename("Attributions.txt"), licenses);
+            string outputFilePath = GetOutputFilePath("Attributions.txt");
+            File.WriteAllText(outputFilePath, licenses);
+            WriteOutput($"Attributions file is here: {outputFilePath}", logLevel: LogLevel.Always);
+
         }
 
         private void WriteOutput(Func<string> line, Exception exception = null, LogLevel logLevel = LogLevel.Information)
