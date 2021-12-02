@@ -780,6 +780,7 @@ namespace NugetUtility
 
         public async Task AddLicenseTexts (List<LibraryInfo> infos)
         {
+            Directory.CreateDirectory(licenseOverrideDir);
             var getLicenseTasks = infos
                 .Select(async info =>
                 {
