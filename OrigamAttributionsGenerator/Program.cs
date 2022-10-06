@@ -145,7 +145,9 @@ namespace OrigamAttributionsGenerator
                 .AddJsonFile("appsettings.json", optional: false);
 
             IConfiguration config = builder.Build();
-            var attributionsConfig = config.GetSection("AttributionsConfig").Get<AttributionsConfig>();
+            var attributionsConfig = config
+                .GetSection("AttributionsConfig")
+                .Get<AttributionsConfig>();
             
             
             var validator = new DataAnnotationsValidator.DataAnnotationsValidator();
